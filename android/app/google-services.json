@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1082816030637",
+    "project_id": "cubing-b1061",
+    "storage_bucket": "cubing-b1061.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1082816030637:android:847e747e9035d4ae4b2324",
+        "android_client_info": {
+          "package_name": "com.example.cube_off"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNk00b0I0fqG9c1gb3qVuphcr_G9le-us"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
