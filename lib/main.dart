@@ -93,7 +93,7 @@ class _MainPageState extends State<MainPage> {
 
     switch (currIndex) {
       case 0:
-        page = CubeScramblePage();
+        page = HomePage();
         break;
       case 1:
         page = FriendsPage();

@@ -17,7 +17,7 @@ class ResultsPage extends StatelessWidget {
           var solve = appState.solves[index];
           return ListTile(
             title: Text(displaySolveTime(solve.time, solve.penalty)),
-            subtitle: Text(solve.penalty.toString().split('.').last),
+            subtitle: Text(solve.scramble),
             leading: CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.primary,
               child: Text(

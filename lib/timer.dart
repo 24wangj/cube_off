@@ -8,6 +8,7 @@ import 'app_state.dart';
 import 'utils/solve.dart';
 import 'utils/string_helpers.dart';
 import 'utils/widgets.dart';
+import 'utils/scrambler.dart';
 
 class TimerPage extends StatefulWidget {
   final void Function(bool) onTimerRunningChanged;
@@ -17,6 +18,20 @@ class TimerPage extends StatefulWidget {
   @override
   State<TimerPage> createState() => _TimerPageState();
 }
+
+final List<Event> events = [
+  Event.threeByThree,
+  Event.twoByTwo,
+  Event.fourByFour,
+  Event.fiveByFive,
+  Event.sixBySix,
+  Event.sevenBySeven,
+  Event.megaminx,
+  Event.pyraminx,
+  Event.squareOne,
+  Event.skewb,
+  Event.clock,
+];
 
 class _TimerPageState extends State<TimerPage> {
   bool _timerRunning = false;
@@ -28,21 +43,27 @@ class _TimerPageState extends State<TimerPage> {
   Timer? _holdTimer;
   late Color _onPrimaryColor;
   static Event? selectedEvent = Event.threeByThree;
-  String scramble = getScrambleForEvent(selectedEvent!);
+  String scramble = "Loading...";
 
-  final List<Event> items = [
-    Event.threeByThree,
-    Event.twoByTwo,
-    Event.fourByFour,
-    Event.fiveByFive,
-    Event.sixBySix,
-    Event.sevenBySeven,
-    Event.megaminx,
-    Event.pyraminx,
-    Event.squareOne,
-    Event.skewb,
-    Event.clock,
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initAndGenerate();
+  }
+
+  Future<void> _initAndGenerate() async {
+    await Scrambler().ensureInitialized();
+    _generateScramble();
+  }
+
+  void _generateScramble() {
+    final result = Scrambler().jsRuntime.evaluate(
+      "cube.scramble('${eventIDs[selectedEvent]}');",
+    );
+    setState(() {
+      scramble = result.stringResult;
+    });
+  }
 
   void _startTimer() {
     setState(() {
@@ -67,9 +88,11 @@ class _TimerPageState extends State<TimerPage> {
         time: _elapsed,
         date: DateTime.now(),
         penalty: Penalty.ok,
-        scramble: 'Generated scramble here', // Replace with actual scramble
+        scramble: scramble,
       ),
     );
+
+    _generateScramble();
 
     setState(() {
       _timerRunning = false;
@@ -174,10 +197,11 @@ class _TimerPageState extends State<TimerPage> {
                       time: duration,
                       date: DateTime.now(),
                       penalty: Penalty.ok,
-                      scramble:
-                          'Generated scramble here', // Replace with actual scramble
+                      scramble: scramble,
                     ),
                   );
+
+                  _generateScramble();
 
                   setState(() {
                     _elapsed = duration;
@@ -296,7 +320,7 @@ class _TimerPageState extends State<TimerPage> {
                             color: Colors.white,
                           ),
                         ),
-                        items: items
+                        items: events
                             .map(
                               (Event item) => DropdownMenuItem<Event>(
                                 value: item,
@@ -318,7 +342,7 @@ class _TimerPageState extends State<TimerPage> {
                         onChanged: (Event? value) {
                           setState(() {
                             selectedEvent = value;
-                            scramble = getScrambleForEvent(value!);
+                            _generateScramble();
                           });
                         },
                         buttonStyleData: ButtonStyleData(
@@ -344,7 +368,7 @@ class _TimerPageState extends State<TimerPage> {
                           offset: const Offset(0, -10),
                         ),
                         selectedItemBuilder: (context) {
-                          return items.map((item) {
+                          return events.map((item) {
                             return Container(
                               alignment: AlignmentDirectional.center,
                               child: Text(
@@ -374,6 +398,7 @@ class _TimerPageState extends State<TimerPage> {
                         style: TextStyle(
                           fontSize: eventScrambleFontSizes[selectedEvent] ?? 18,
                           color: Theme.of(context).colorScheme.onPrimary,
+                          overflow: TextOverflow.visible,
                         ),
                         textAlign: TextAlign.center,
                       ),
