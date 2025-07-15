@@ -1,3 +1,7 @@
+import 'package:flutter/material.dart';
+
+import 'string_helpers.dart';
+
 enum Penalty { ok, plusTwo, dnf }
 
 enum Event {
@@ -14,18 +18,46 @@ enum Event {
   clock,
 }
 
-class Solve {
-  Solve({
-    required this.time,
-    required this.date,
-    required this.penalty,
-    required this.scramble,
-  });
+class Time {
+  Time(this.duration, this.penalty);
 
-  final Duration time;
-  final DateTime date;
+  final Duration? duration;
   Penalty penalty;
+
+  @override
+  String toString() {
+    if (penalty == Penalty.dnf) {
+      return 'DNF';
+    } else if (penalty == Penalty.plusTwo) {
+      return '${formatDuration(duration! + const Duration(seconds: 2))}+';
+    } else {
+      return formatDuration(duration);
+    }
+  }
+}
+
+class Solve {
+  Solve({required this.time, required this.date, required this.scramble});
+
+  final Time time;
+  final DateTime date;
   final String scramble;
+
+  @override
+  int compareTo(Solve other) {
+    final a = time.duration;
+    final b = other.time.duration;
+
+    if ((a == null && b == null) ||
+        (time.penalty == Penalty.dnf && other.time.penalty == Penalty.dnf)) {
+      return 0;
+    }
+
+    if (a == null || time.penalty == Penalty.dnf) return 1;
+    if (b == null || other.time.penalty == Penalty.dnf) return -1;
+
+    return a.compareTo(b);
+  }
 }
 
 final Map<Event, String> eventNames = {

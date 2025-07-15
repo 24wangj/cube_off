@@ -14,9 +14,9 @@ class ResultsPage extends StatelessWidget {
       child: ListView.builder(
         itemCount: appState.solves.length,
         itemBuilder: (context, index) {
-          var solve = appState.solves[index];
+          var solve = appState.solves.reversed.elementAt(index);
           return ListTile(
-            title: Text(displaySolveTime(solve.time, solve.penalty)),
+            title: Text(solve.time.toString()),
             subtitle: Text(solve.scramble),
             leading: CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.primary,

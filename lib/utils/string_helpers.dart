@@ -1,6 +1,10 @@
 import 'solve.dart';
 
-String formatDuration(Duration duration) {
+String formatDuration(Duration? duration) {
+  if (duration == null) {
+    return 'NaN';
+  }
+
   final hours = duration.inHours;
   final minutes = duration.inMinutes % 60;
   final seconds = duration.inSeconds % 60;

@@ -138,10 +138,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_js
-      sha256: c4e0ff2cac3378e34eb0cafb58089377a7722d3531cdf9fcd5a53b5afc66c2dc
+      sha256: d19cde4bad2f7c301ff5f69d7b3452ff91f2ca89d153569dd03e544579d8610d
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.2"
+    version: "0.8.1"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -164,10 +164,10 @@ packages:
     dependency: transitive
     description:
       name: http
-      sha256: "5895291c13fa8a3bd82e76d5627f69e0d85ca6a30dcac95c4ea19a5d555879c2"
+      sha256: "2c11f3f94c687ee9bad77c171151672986360b2b001d109814ee7140b2cf261b"
       url: "https://pub.dev"
     source: hosted
-    version: "0.13.6"
+    version: "1.4.0"
   http_parser:
     dependency: transitive
     description:

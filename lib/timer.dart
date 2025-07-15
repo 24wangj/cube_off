@@ -85,9 +85,8 @@ class _TimerPageState extends State<TimerPage> {
 
     Provider.of<AppState>(context, listen: false).addSolve(
       Solve(
-        time: _elapsed,
+        time: Time(_elapsed, Penalty.ok),
         date: DateTime.now(),
-        penalty: Penalty.ok,
         scramble: scramble,
       ),
     );
@@ -194,9 +193,8 @@ class _TimerPageState extends State<TimerPage> {
                 if (duration != null) {
                   Provider.of<AppState>(context, listen: false).addSolve(
                     Solve(
-                      time: duration,
+                      time: Time(duration, Penalty.ok),
                       date: DateTime.now(),
-                      penalty: Penalty.ok,
                       scramble: scramble,
                     ),
                   );
@@ -255,7 +253,8 @@ class _TimerPageState extends State<TimerPage> {
               text: 'OK',
               onPressed: () {
                 appState.deleteLastSolve();
-                _elapsed = appState.getLastSolve()?.time ?? Duration.zero;
+                _elapsed =
+                    appState.getLastSolve()?.time.duration ?? Duration.zero;
                 Navigator.pop(context);
               },
             ),
@@ -495,7 +494,7 @@ class _TimerPageState extends State<TimerPage> {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 50),
                   child: Text(
-                    'Best, Ao5, Ao12, etc',
+                    'Mo3: ${Provider.of<AppState>(context).meanOf3()}\nAo5: ${Provider.of<AppState>(context).averageOf5()}\nAo12: ${Provider.of<AppState>(context).averageOf12()}',
                     style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                 ),
