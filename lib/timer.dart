@@ -19,20 +19,6 @@ class TimerPage extends StatefulWidget {
   State<TimerPage> createState() => _TimerPageState();
 }
 
-final List<Event> events = [
-  Event.threeByThree,
-  Event.twoByTwo,
-  Event.fourByFour,
-  Event.fiveByFive,
-  Event.sixBySix,
-  Event.sevenBySeven,
-  Event.megaminx,
-  Event.pyraminx,
-  Event.squareOne,
-  Event.skewb,
-  Event.clock,
-];
-
 class _TimerPageState extends State<TimerPage> {
   bool _timerRunning = false;
   late Color _timerColor;
@@ -42,7 +28,6 @@ class _TimerPageState extends State<TimerPage> {
   Timer? _timer;
   Timer? _holdTimer;
   late Color _onPrimaryColor;
-  static Event? selectedEvent = Event.threeByThree;
   String scramble = "Loading...";
 
   @override
@@ -58,7 +43,7 @@ class _TimerPageState extends State<TimerPage> {
 
   void _generateScramble() {
     final result = Scrambler().jsRuntime.evaluate(
-      "cube.scramble('${eventIDs[selectedEvent]}');",
+      "cube.scramble('${eventIDs[Provider.of<AppState>(context, listen: false).currentEvent]}');",
     );
     setState(() {
       scramble = result.stringResult;
@@ -266,9 +251,10 @@ class _TimerPageState extends State<TimerPage> {
 
   @override
   Widget build(BuildContext context) {
+    var appState = Provider.of<AppState>(context);
     Penalty selectedPenalty = _timerRunning
         ? Penalty.ok
-        : Provider.of<AppState>(context).getCurrentPenalty();
+        : appState.getCurrentPenalty();
 
     return Stack(
       children: [
@@ -337,10 +323,10 @@ class _TimerPageState extends State<TimerPage> {
                               ),
                             )
                             .toList(),
-                        value: selectedEvent,
+                        value: appState.currentEvent,
                         onChanged: (Event? value) {
                           setState(() {
-                            selectedEvent = value;
+                            appState.currentEvent = value!;
                             _generateScramble();
                           });
                         },
@@ -371,7 +357,7 @@ class _TimerPageState extends State<TimerPage> {
                             return Container(
                               alignment: AlignmentDirectional.center,
                               child: Text(
-                                eventNames[selectedEvent]!,
+                                eventNames[appState.currentEvent]!,
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -395,7 +381,9 @@ class _TimerPageState extends State<TimerPage> {
                       child: Text(
                         scramble,
                         style: TextStyle(
-                          fontSize: eventScrambleFontSizes[selectedEvent] ?? 18,
+                          fontSize:
+                              eventScrambleFontSizes[appState.currentEvent] ??
+                              18,
                           color: Theme.of(context).colorScheme.onPrimary,
                           overflow: TextOverflow.visible,
                         ),
@@ -459,10 +447,7 @@ class _TimerPageState extends State<TimerPage> {
                     selected: <Penalty>{selectedPenalty},
                     onSelectionChanged: (Set<Penalty> newSelection) {
                       setState(() {
-                        Provider.of<AppState>(
-                          context,
-                          listen: false,
-                        ).setCurrentPenalty(newSelection.first);
+                        appState.setCurrentPenalty(newSelection.first);
                         selectedPenalty = newSelection.first;
                       });
                     },
@@ -494,7 +479,7 @@ class _TimerPageState extends State<TimerPage> {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 50),
                   child: Text(
-                    'Mo3: ${Provider.of<AppState>(context).meanOf3()}\nAo5: ${Provider.of<AppState>(context).averageOf5()}\nAo12: ${Provider.of<AppState>(context).averageOf12()}',
+                    'Mo3: ${appState.meanOf3()}\nAo5: ${appState.averageOf5()}\nAo12: ${appState.averageOf12()}',
                     style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                 ),

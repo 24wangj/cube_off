@@ -6,8 +6,16 @@ class AppState extends ChangeNotifier {
   bool _isDarkMode = false;
   bool get isDarkMode => _isDarkMode;
 
-  final List<Solve> _solves = [];
-  List<Solve> get solves => _solves;
+  Map<Event, List<Solve>> _solves = {};
+  List<Solve> get solves => _solves[_currentEvent] ?? [];
+
+  Event _currentEvent = Event.threeByThree;
+  Event get currentEvent => _currentEvent;
+
+  set currentEvent(Event event) {
+    _currentEvent = event;
+    notifyListeners();
+  }
 
   void toggleTheme() {
     _isDarkMode = !_isDarkMode;
@@ -15,40 +23,41 @@ class AppState extends ChangeNotifier {
   }
 
   Solve? getLastSolve() {
-    if (_solves.isNotEmpty) {
-      return _solves.last;
+    if (_solves[_currentEvent]?.isNotEmpty ?? false) {
+      return _solves[_currentEvent]!.last;
     }
     return null;
   }
 
   void addSolve(Solve solve) {
-    _solves.add(solve);
+    _solves[_currentEvent] ??= [];
+    _solves[_currentEvent]!.add(solve);
     notifyListeners();
   }
 
   void deleteLastSolve() {
-    if (_solves.isNotEmpty) {
-      _solves.removeLast();
+    if (_solves[_currentEvent]?.isNotEmpty ?? false) {
+      _solves[_currentEvent]!.removeLast();
       notifyListeners();
     }
   }
 
   Penalty getCurrentPenalty() {
-    if (_solves.isNotEmpty) {
-      return _solves.last.time.penalty;
+    if (_solves[_currentEvent]?.isNotEmpty ?? false) {
+      return _solves[_currentEvent]!.last.time.penalty;
     }
     return Penalty.ok;
   }
 
   void setCurrentPenalty(Penalty penalty) {
-    if (_solves.isNotEmpty) {
-      _solves.last.time.penalty = penalty;
+    if (_solves[_currentEvent]?.isNotEmpty ?? false) {
+      _solves[_currentEvent]!.last.time.penalty = penalty;
       notifyListeners();
     }
   }
 
   Time? meanOf3() {
-    final last3 = _solves.takeLast(3);
+    final last3 = _solves[_currentEvent]?.takeLast(3) ?? [];
     if (last3.length < 3) {
       return Time(null, Penalty.ok);
     }
@@ -89,7 +98,7 @@ class AppState extends ChangeNotifier {
   }
 
   Time? averageOf5() {
-    final last5 = _solves.takeLast(5);
+    final last5 = _solves[_currentEvent]?.takeLast(5) ?? [];
 
     if (last5.length < 5) {
       return Time(null, Penalty.ok);
@@ -101,7 +110,7 @@ class AppState extends ChangeNotifier {
   }
 
   Time? averageOf12() {
-    final last12 = _solves.takeLast(12);
+    final last12 = _solves[_currentEvent]?.takeLast(12) ?? [];
 
     if (last12.length < 12) {
       return Time(null, Penalty.ok);

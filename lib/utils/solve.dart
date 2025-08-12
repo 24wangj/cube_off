@@ -95,3 +95,17 @@ final Map<Event, String> eventIDs = {
   Event.skewb: "skewb",
   Event.clock: "clock",
 };
+
+final List<Event> events = [
+  Event.threeByThree,
+  Event.twoByTwo,
+  Event.fourByFour,
+  Event.fiveByFive,
+  Event.sixBySix,
+  Event.sevenBySeven,
+  Event.megaminx,
+  Event.pyraminx,
+  Event.squareOne,
+  Event.skewb,
+  Event.clock,
+];
