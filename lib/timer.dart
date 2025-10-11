@@ -42,6 +42,7 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   void _generateScramble() {
+    if (!mounted) return;
     final result = Scrambler().jsRuntime.evaluate(
       "cube.scramble('${eventIDs[Provider.of<AppState>(context, listen: false).currentEvent]}');",
     );
@@ -73,6 +74,7 @@ class _TimerPageState extends State<TimerPage> {
         time: Time(_elapsed, Penalty.ok),
         date: DateTime.now(),
         scramble: scramble,
+        id: '',
       ),
     );
 
@@ -181,6 +183,7 @@ class _TimerPageState extends State<TimerPage> {
                       time: Time(duration, Penalty.ok),
                       date: DateTime.now(),
                       scramble: scramble,
+                      id: '',
                     ),
                   );
 
@@ -288,11 +291,7 @@ class _TimerPageState extends State<TimerPage> {
               left: false,
               right: false,
               child: Padding(
-                padding: const EdgeInsets.only(
-                  top: 20,
-                  right: 30,
-                  left: 30,
-                ), // Adjust as needed
+                padding: const EdgeInsets.only(top: 10, right: 30, left: 30),
                 child: Column(
                   children: [
                     DropdownButtonHideUnderline(
@@ -327,7 +326,14 @@ class _TimerPageState extends State<TimerPage> {
                         onChanged: (Event? value) {
                           setState(() {
                             appState.currentEvent = value!;
+                            _elapsed =
+                                appState.getLastSolve()?.time.duration ??
+                                Duration.zero;
                             _generateScramble();
+
+                            if (appState.eventsFetched[value] == false) {
+                              appState.fetchSolvesForEvent(value);
+                            }
                           });
                         },
                         buttonStyleData: ButtonStyleData(
@@ -479,7 +485,7 @@ class _TimerPageState extends State<TimerPage> {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 50),
                   child: Text(
-                    'Mo3: ${appState.meanOf3()}\nAo5: ${appState.averageOf5()}\nAo12: ${appState.averageOf12()}',
+                    'Mo3: ${appState.currMo3}\nAo5: ${appState.currAo5}\nAo12: ${appState.currAo12}',
                     style: TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                 ),

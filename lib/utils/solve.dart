@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import 'string_helpers.dart';
 
 enum Penalty { ok, plusTwo, dnf }
@@ -29,34 +27,70 @@ class Time {
     if (penalty == Penalty.dnf) {
       return 'DNF';
     } else if (penalty == Penalty.plusTwo) {
-      return '${formatDuration(duration! + const Duration(seconds: 2))}+';
+      return '${formatDuration(effectiveDuration)}+';
     } else {
-      return formatDuration(duration);
+      return formatDuration(effectiveDuration);
     }
+  }
+
+  Duration? get effectiveDuration {
+    if (duration == null) return null;
+    if (penalty == Penalty.dnf) return null;
+    if (penalty == Penalty.plusTwo) {
+      return duration! + const Duration(seconds: 2);
+    }
+    return duration;
+  }
+
+  int compareTo(Time other) {
+    var a = effectiveDuration;
+    var b = other.effectiveDuration;
+
+    if ((a == null && b == null) ||
+        (penalty == Penalty.dnf && other.penalty == Penalty.dnf)) {
+      return 0;
+    }
+
+    if (a == null || penalty == Penalty.dnf) return 1;
+    if (b == null || other.penalty == Penalty.dnf) return -1;
+
+    return a.compareTo(b);
   }
 }
 
+class TimeWithDate extends Time {
+  TimeWithDate(super.duration, super.penalty, this.date);
+
+  final DateTime date;
+}
+
 class Solve {
-  Solve({required this.time, required this.date, required this.scramble});
+  Solve({
+    required this.time,
+    required this.date,
+    required this.scramble,
+    required this.id,
+  });
 
   final Time time;
   final DateTime date;
   final String scramble;
+  String id;
 
-  @override
   int compareTo(Solve other) {
-    final a = time.duration;
-    final b = other.time.duration;
+    return time.compareTo(other.time);
+  }
 
-    if ((a == null && b == null) ||
-        (time.penalty == Penalty.dnf && other.time.penalty == Penalty.dnf)) {
-      return 0;
-    }
-
-    if (a == null || time.penalty == Penalty.dnf) return 1;
-    if (b == null || other.time.penalty == Penalty.dnf) return -1;
-
-    return a.compareTo(b);
+  factory Solve.fromFirestore(String id, Map<String, dynamic> data) {
+    return Solve(
+      id: id,
+      scramble: data['scramble'] ?? '',
+      date: DateTime.fromMillisecondsSinceEpoch(data['date']),
+      time: Time(
+        Duration(milliseconds: (data['time'] as num).toInt()),
+        Penalty.values.byName(data['penalty']),
+      ),
+    );
   }
 }
 

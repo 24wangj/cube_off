@@ -2,7 +2,7 @@ import 'solve.dart';
 
 String formatDuration(Duration? duration) {
   if (duration == null) {
-    return 'NaN';
+    return '--/--';
   }
 
   final hours = duration.inHours;
@@ -19,6 +19,16 @@ String formatDuration(Duration? duration) {
   }
 }
 
+String formatDouble(double durationDouble) {
+  Duration duration = Duration(milliseconds: (durationDouble * 1000).toInt());
+
+  return formatDuration(duration);
+}
+
+String formatTitle(double value) {
+  return value.toStringAsFixed(1);
+}
+
 String displaySolveTime(Duration time, Penalty penalty) {
   if (penalty == Penalty.dnf) {
     return 'DNF';
@@ -30,7 +40,11 @@ String displaySolveTime(Duration time, Penalty penalty) {
 }
 
 String formatDate(DateTime date) {
-  return '${date.day}/${date.month}/${date.year}';
+  return '${date.month}/${date.day}/${date.year}';
+}
+
+String formatDateWithTime(DateTime date) {
+  return '${formatDate(date)} ${date.hour}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}';
 }
 
 Duration? parseDuration(String input) {

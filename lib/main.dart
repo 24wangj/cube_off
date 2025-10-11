@@ -11,11 +11,11 @@ import 'timer.dart';
 import 'results.dart';
 import 'profile.dart';
 import 'app_state.dart';
-import 'utils/scrambler.dart';
+import 'signup.dart';
+import 'login.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(
@@ -60,7 +60,13 @@ class MainApp extends StatelessWidget {
         ),
       ),
       themeMode: appState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: MainPage(),
+      // home: MainPage(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/signup': (context) => const SignupPage(),
+        '/home': (context) => const MainPage(),
+      },
     );
   }
 }

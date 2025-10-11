@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,12 +12,33 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = Provider.of<AppState>(context);
     return Center(
-      child: CustomElevatedButton(
-        text: 'Toggle Dark Mode',
-        onPressed: () {
-          // Toggle dark mode
-          appState.toggleTheme();
-        },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text('${FirebaseAuth.instance.currentUser?.email}'),
+          CustomElevatedButton(
+            text: 'Toggle Dark Mode',
+            onPressed: () {
+              // Toggle dark mode
+              appState.toggleTheme();
+            },
+          ),
+          CustomElevatedButton(
+            text: 'Add Solves',
+            onPressed: () {
+              // Add solves
+              appState.addSolves();
+            },
+          ),
+
+          CustomElevatedButton(
+            text: 'Sign Out',
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.of(context).pushReplacementNamed('/login');
+            },
+          ),
+        ],
       ),
     );
   }

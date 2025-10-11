@@ -13,8 +13,10 @@ dependencies:
   dropdown_button2: ^2.3.9
   firebase_core: ^3.15.1
   firebase_auth: ^5.6.2
+  cloud_firestore: ^5.6.11
   flutter_js: ^0.8.1
   provider: ^6.1.5
+  fl_chart: ^1.0.0
 
 dev_dependencies:
   flutter_test:
