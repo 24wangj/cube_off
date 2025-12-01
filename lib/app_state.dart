@@ -1,13 +1,18 @@
+import 'dart:async';
 import 'dart:math';
 
-import 'package:cube_off/firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import 'utils/solve.dart';
+
+import 'models/daily_scramble.dart';
+import 'models/solve_record.dart';
+import 'services/scramble_service.dart';
+import 'services/leaderboard_service.dart';
+import 'services/friend_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState() {
@@ -22,18 +27,112 @@ class AppState extends ChangeNotifier {
 
   Map<Event, bool> get eventsFetched => _eventsFetched;
 
+  StreamSubscription<User?>? _authSubscription;
+
   Future<void> init() async {
-    FirebaseAuth.instance.idTokenChanges().listen((User? user) {
+    // Listen for auth state changes so we can clear and reload per-user data
+    // when the signed-in user changes (sign-out/sign-in flow).
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((
+      User? user,
+    ) async {
       if (user == null) {
-        print('User is currently signed out!');
+        // Signed out: clear in-memory solves and mark events as not fetched.
+        _solves.clear();
+        _eventsFetched = Map.fromIterable(
+          Event.values,
+          key: (e) => e as Event,
+          value: (_) => false,
+        );
+        notifyListeners();
       } else {
-        print('User is signed in!');
+        // Signed in: clear any stale solves then fetch for current event.
+        _solves.clear();
+        _eventsFetched = Map.fromIterable(
+          Event.values,
+          key: (e) => e as Event,
+          value: (_) => false,
+        );
+        await fetchSolvesForEvent(_currentEvent);
+        updateStats();
       }
     });
 
-    fetchSolvesForEvent(_currentEvent);
-
+    // On initial startup (before any auth event), attempt to fetch solves
+    // for the current event if a user is already signed in.
+    await fetchSolvesForEvent(_currentEvent);
     updateStats();
+  }
+
+  // Services for daily scramble and leaderboards
+  final ScrambleService _scrambleService = ScrambleService();
+  final LeaderboardService _leaderboardService = LeaderboardService();
+  final FriendService _friendService = FriendService();
+
+  DailyScramble? _todayScramble;
+  DailyScramble? get todayScramble => _todayScramble;
+
+  Future<void> fetchTodayScramble() async {
+    _todayScramble = await _scrambleService.getScrambleForDate(DateTime.now());
+    notifyListeners();
+  }
+
+  Future<String> submitDailySolve(
+    Duration? duration,
+    String penalty, {
+    String? scramble,
+    DateTime? scrambleDate,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('Must be logged in to submit');
+
+    final date = scrambleDate ?? DateTime.now();
+    final dailyId =
+        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+    // Prevent more than one submission per user per scramble (dailyId).
+    final alreadySubmitted = await _leaderboardService.hasUserSubmitted(
+      dailyId,
+      user.uid,
+    );
+    if (alreadySubmitted) {
+      throw Exception('You have already submitted a solve for this scramble.');
+    }
+
+    final record = SolveRecord(
+      id: '',
+      userId: user.uid,
+      displayName: user.displayName ?? user.email ?? user.uid,
+      date: date,
+      milliseconds: duration?.inMilliseconds,
+      penalty: penalty,
+      scramble: scramble ?? _todayScramble?.scramble ?? '',
+    );
+
+    final id = await _leaderboardService.uploadDailySolve(dailyId, record);
+    return id;
+  }
+
+  Future<List<SolveRecord>> fetchFriendLeaderboardForToday() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
+
+    final friendIds = await _friendService.getFriendIds(user.uid);
+    final now = DateTime.now();
+    final dailyId =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    return await _leaderboardService.fetchFriendLeaderboard(dailyId, friendIds);
+  }
+
+  Future<List<SolveRecord>> fetchFriendLeaderboardForDate(DateTime date) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
+
+    final friendIds = await _friendService.getFriendIds(user.uid);
+    final dailyId =
+        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+    return await _leaderboardService.fetchFriendLeaderboard(dailyId, friendIds);
   }
 
   Future<void> fetchSolvesForEvent(Event event) async {
@@ -47,12 +146,21 @@ class AppState extends ChangeNotifier {
         .orderBy('date', descending: false)
         .get();
 
-    _solves[_currentEvent] = querySnapshot.docs.map((doc) {
+    // Store the fetched solves under the passed-in event (not the
+    // possibly-changing _currentEvent) so each event's solves are
+    // tracked correctly.
+    _solves[event] = querySnapshot.docs.map((doc) {
       final data = doc.data();
       return Solve.fromFirestore(doc.id, data);
     }).toList();
 
-    _eventsFetched[_currentEvent] = true;
+    _eventsFetched[event] = true;
+
+    // If we fetched the currently selected event, recompute stats so
+    // the UI shows updated averages/records immediately.
+    if (event == _currentEvent) {
+      updateStats();
+    }
   }
 
   bool _isDarkMode = false;
@@ -254,6 +362,12 @@ class AppState extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 
   set currentEvent(Event event) {

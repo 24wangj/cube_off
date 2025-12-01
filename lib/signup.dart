@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 
 import 'utils/widgets.dart';
@@ -14,12 +15,21 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController displayNameController = TextEditingController();
   bool _isLoading = false;
 
   Future<void> signUpAndVerify(BuildContext context) async {
     setState(() {
       _isLoading = true;
     });
+    final displayName = displayNameController.text.trim();
+    if (displayName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a display name')),
+      );
+      setState(() => _isLoading = false);
+      return;
+    }
     try {
       final userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
@@ -28,6 +38,20 @@ class _SignupPageState extends State<SignupPage> {
           );
       final user = userCredential.user;
       if (user != null && !user.emailVerified) {
+        // Save username as displayName and create a firestore user doc.
+        try {
+          await user.updateDisplayName(displayName);
+        } catch (_) {}
+        try {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+                'displayName': displayName,
+                'email': user.email,
+                'createdAt': DateTime.now().millisecondsSinceEpoch,
+              });
+        } catch (_) {}
         await user.sendEmailVerification();
         await showDialog(
           context: context,
@@ -63,6 +87,9 @@ class _SignupPageState extends State<SignupPage> {
           );
         }
       } else if (user != null && user.emailVerified) {
+        try {
+          await user.updateDisplayName(displayNameController.text.trim());
+        } catch (_) {}
         Navigator.of(context).pushReplacementNamed('/home');
       }
     } on FirebaseAuthException catch (e) {
@@ -97,6 +124,10 @@ class _SignupPageState extends State<SignupPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               TextField(
+                controller: displayNameController,
+                decoration: const InputDecoration(labelText: 'Display name'),
+              ),
+              TextField(
                 controller: emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
               ),
@@ -117,5 +148,13 @@ class _SignupPageState extends State<SignupPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    displayNameController.dispose();
+    super.dispose();
   }
 }

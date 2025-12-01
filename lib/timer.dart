@@ -12,8 +12,24 @@ import 'utils/scrambler.dart';
 
 class TimerPage extends StatefulWidget {
   final void Function(bool) onTimerRunningChanged;
+  final void Function(Solve)? onSolveAdded;
 
-  const TimerPage({required this.onTimerRunningChanged, super.key});
+  // If `dailyMode` is true the timer is used specifically for the Daily
+  // Scramble flow: it will show the provided scramble (if any), disable
+  // event selection, use a local penalty state, and will not add solves to
+  // the global results list (it will instead call `onSolveAdded`).
+  final bool dailyMode;
+  final String? providedScramble;
+  final DateTime? providedScrambleDate;
+
+  const TimerPage({
+    required this.onTimerRunningChanged,
+    this.onSolveAdded,
+    this.dailyMode = false,
+    this.providedScramble,
+    this.providedScrambleDate,
+    super.key,
+  });
 
   @override
   State<TimerPage> createState() => _TimerPageState();
@@ -29,6 +45,7 @@ class _TimerPageState extends State<TimerPage> {
   Timer? _holdTimer;
   late Color _onPrimaryColor;
   String scramble = "Loading...";
+  late Penalty _localSelectedPenalty;
 
   @override
   void initState() {
@@ -38,14 +55,25 @@ class _TimerPageState extends State<TimerPage> {
 
   Future<void> _initAndGenerate() async {
     await Scrambler().ensureInitialized();
-    _generateScramble();
+    if (widget.dailyMode && widget.providedScramble != null) {
+      if (!mounted) return;
+      setState(() {
+        scramble = widget.providedScramble!;
+        // Daily timer should start with display time at 0.
+        _elapsed = Duration.zero;
+      });
+    } else {
+      _generateScramble();
+    }
   }
 
   void _generateScramble() {
+    if (widget.dailyMode) return;
     if (!mounted) return;
-    final result = Scrambler().jsRuntime.evaluate(
-      "cube.scramble('${eventIDs[Provider.of<AppState>(context, listen: false).currentEvent]}');",
-    );
+    final appState = Provider.of<AppState>(context, listen: false);
+    final evId = eventIDs[appState.currentEvent] ?? '333';
+    final jsCall = "cube.scramble('$evId');";
+    final result = Scrambler().jsRuntime.evaluate(jsCall);
     setState(() {
       scramble = result.stringResult;
     });
@@ -69,16 +97,25 @@ class _TimerPageState extends State<TimerPage> {
   void _stopTimer() {
     _timer?.cancel();
 
-    Provider.of<AppState>(context, listen: false).addSolve(
-      Solve(
-        time: Time(_elapsed, Penalty.ok),
-        date: DateTime.now(),
-        scramble: scramble,
-        id: '',
-      ),
+    final penalty = widget.dailyMode
+        ? _localSelectedPenalty
+        : Provider.of<AppState>(context, listen: false).getCurrentPenalty();
+
+    final solve = Solve(
+      time: Time(_elapsed, penalty),
+      date: widget.providedScrambleDate ?? DateTime.now(),
+      scramble: scramble,
+      id: '',
     );
 
-    _generateScramble();
+    if (widget.dailyMode) {
+      widget.onSolveAdded?.call(solve);
+    } else {
+      Provider.of<AppState>(context, listen: false).addSolve(solve);
+      widget.onSolveAdded?.call(solve);
+    }
+
+    if (!widget.dailyMode) _generateScramble();
 
     setState(() {
       _timerRunning = false;
@@ -137,6 +174,10 @@ class _TimerPageState extends State<TimerPage> {
     super.didChangeDependencies();
     _onPrimaryColor = Theme.of(context).colorScheme.onPrimary;
     _timerColor = Theme.of(context).colorScheme.onPrimary;
+    // initialize local penalty to the app state's current penalty
+    _localSelectedPenalty = widget.dailyMode
+        ? Penalty.ok
+        : Provider.of<AppState>(context, listen: false).getCurrentPenalty();
   }
 
   @override
@@ -178,14 +219,27 @@ class _TimerPageState extends State<TimerPage> {
               onPressed: () {
                 final duration = parseDuration(_timeInputController.text);
                 if (duration != null) {
-                  Provider.of<AppState>(context, listen: false).addSolve(
-                    Solve(
-                      time: Time(duration, Penalty.ok),
-                      date: DateTime.now(),
-                      scramble: scramble,
-                      id: '',
-                    ),
+                  final penalty = widget.dailyMode
+                      ? _localSelectedPenalty
+                      : Provider.of<AppState>(
+                          context,
+                          listen: false,
+                        ).getCurrentPenalty();
+                  final solve = Solve(
+                    time: Time(duration, penalty),
+                    date: widget.providedScrambleDate ?? DateTime.now(),
+                    scramble: scramble,
+                    id: '',
                   );
+                  if (widget.dailyMode) {
+                    widget.onSolveAdded?.call(solve);
+                  } else {
+                    Provider.of<AppState>(
+                      context,
+                      listen: false,
+                    ).addSolve(solve);
+                    widget.onSolveAdded?.call(solve);
+                  }
 
                   _generateScramble();
 
@@ -257,7 +311,9 @@ class _TimerPageState extends State<TimerPage> {
     var appState = Provider.of<AppState>(context);
     Penalty selectedPenalty = _timerRunning
         ? Penalty.ok
-        : appState.getCurrentPenalty();
+        : (widget.dailyMode
+              ? _localSelectedPenalty
+              : appState.getCurrentPenalty());
 
     return Stack(
       children: [
@@ -322,20 +378,24 @@ class _TimerPageState extends State<TimerPage> {
                               ),
                             )
                             .toList(),
-                        value: appState.currentEvent,
-                        onChanged: (Event? value) {
-                          setState(() {
-                            appState.currentEvent = value!;
-                            _elapsed =
-                                appState.getLastSolve()?.time.duration ??
-                                Duration.zero;
-                            _generateScramble();
+                        value: widget.dailyMode
+                            ? Event.threeByThree
+                            : appState.currentEvent,
+                        onChanged: widget.dailyMode
+                            ? null
+                            : (Event? value) {
+                                setState(() {
+                                  appState.currentEvent = value!;
+                                  _elapsed =
+                                      appState.getLastSolve()?.time.duration ??
+                                      Duration.zero;
+                                  _generateScramble();
 
-                            if (appState.eventsFetched[value] == false) {
-                              appState.fetchSolvesForEvent(value);
-                            }
-                          });
-                        },
+                                  if (appState.eventsFetched[value] == false) {
+                                    appState.fetchSolvesForEvent(value);
+                                  }
+                                });
+                              },
                         buttonStyleData: ButtonStyleData(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           height: 40,
@@ -359,11 +419,14 @@ class _TimerPageState extends State<TimerPage> {
                           offset: const Offset(0, -10),
                         ),
                         selectedItemBuilder: (context) {
+                          final displayEvent = widget.dailyMode
+                              ? Event.threeByThree
+                              : appState.currentEvent;
                           return events.map((item) {
                             return Container(
                               alignment: AlignmentDirectional.center,
                               child: Text(
-                                eventNames[appState.currentEvent]!,
+                                eventNames[displayEvent]!,
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -387,9 +450,10 @@ class _TimerPageState extends State<TimerPage> {
                       child: Text(
                         scramble,
                         style: TextStyle(
-                          fontSize:
-                              eventScrambleFontSizes[appState.currentEvent] ??
-                              18,
+                          fontSize: widget.dailyMode
+                              ? 18
+                              : eventScrambleFontSizes[appState.currentEvent] ??
+                                    18,
                           color: Theme.of(context).colorScheme.onPrimary,
                           overflow: TextOverflow.visible,
                         ),
@@ -421,59 +485,68 @@ class _TimerPageState extends State<TimerPage> {
                     },
                   ),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 8)),
-                  SegmentedButton<Penalty>(
-                    showSelectedIcon: false,
-                    style: SegmentedButton.styleFrom(
-                      side: const BorderSide(color: Colors.transparent),
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainer,
-                      selectedForegroundColor: Colors.white,
-                      selectedBackgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primary,
+                  if (!widget.dailyMode)
+                    SegmentedButton<Penalty>(
+                      showSelectedIcon: false,
+                      style: SegmentedButton.styleFrom(
+                        side: const BorderSide(color: Colors.transparent),
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainer,
+                        selectedForegroundColor: Colors.white,
+                        selectedBackgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primary,
+                      ),
+                      segments: const <ButtonSegment<Penalty>>[
+                        ButtonSegment(
+                          value: Penalty.ok,
+                          label: Text('OK'),
+                          // icon: Icon(Icons.check_circle_outline),
+                        ),
+                        ButtonSegment(
+                          value: Penalty.plusTwo,
+                          label: Text('+2'),
+                          // icon: Icon(Icons.add_circle_outline),
+                        ),
+                        ButtonSegment(
+                          value: Penalty.dnf,
+                          label: Text('DNF'),
+                          // icon: Icon(Icons.cancel_outlined),
+                        ),
+                      ],
+                      selected: <Penalty>{selectedPenalty},
+                      onSelectionChanged: (Set<Penalty> newSelection) {
+                        setState(() {
+                          if (widget.dailyMode) {
+                            _localSelectedPenalty = newSelection.first;
+                          } else {
+                            appState.setCurrentPenalty(newSelection.first);
+                          }
+                          selectedPenalty = newSelection.first;
+                        });
+                      },
                     ),
-                    segments: const <ButtonSegment<Penalty>>[
-                      ButtonSegment(
-                        value: Penalty.ok,
-                        label: Text('OK'),
-                        // icon: Icon(Icons.check_circle_outline),
+                  if (!widget.dailyMode) ...[
+                    Padding(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      tooltip: 'Delete last solve',
+                      style: IconButton.styleFrom(
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
                       ),
-                      ButtonSegment(
-                        value: Penalty.plusTwo,
-                        label: Text('+2'),
-                        // icon: Icon(Icons.add_circle_outline),
-                      ),
-                      ButtonSegment(
-                        value: Penalty.dnf,
-                        label: Text('DNF'),
-                        // icon: Icon(Icons.cancel_outlined),
-                      ),
-                    ],
-                    selected: <Penalty>{selectedPenalty},
-                    onSelectionChanged: (Set<Penalty> newSelection) {
-                      setState(() {
-                        appState.setCurrentPenalty(newSelection.first);
-                        selectedPenalty = newSelection.first;
-                      });
-                    },
-                  ),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 8)),
-                  IconButton(
-                    icon: const Icon(Icons.delete),
-                    tooltip: 'Delete last solve',
-                    style: IconButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      onPressed: () {
+                        _displayDeleteSolveDialog(context);
+                      },
                     ),
-                    onPressed: () {
-                      _displayDeleteSolveDialog(context);
-                    },
-                  ),
+                  ],
                 ],
               ),
             ),
           ),
-        if (!_timerRunning)
+        if (!_timerRunning && !widget.dailyMode)
           IgnorePointer(
             child: Align(
               alignment: Alignment.bottomCenter,

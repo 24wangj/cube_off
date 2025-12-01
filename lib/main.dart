@@ -7,8 +7,7 @@ import 'package:provider/provider.dart';
 
 import 'home.dart';
 import 'friends.dart';
-import 'timer.dart';
-import 'results.dart';
+// timer and results removed from bottom nav; pages still available elsewhere
 import 'profile.dart';
 import 'app_state.dart';
 import 'signup.dart';
@@ -81,8 +80,6 @@ class MainPage extends StatefulWidget {
 const List<TabItem> items = [
   TabItem(icon: Icons.home, title: 'Home'),
   TabItem(icon: Icons.people, title: 'Friends'),
-  TabItem(icon: Icons.timer, title: 'Timer'),
-  TabItem(icon: Icons.list, title: 'Results'),
   TabItem(icon: Icons.account_box, title: 'Profile'),
 ];
 
@@ -90,12 +87,7 @@ class _MainPageState extends State<MainPage> {
   var currIndex = 0;
 
   bool _timerRunning = false;
-
-  void _handleTimerRunningChanged(bool running) {
-    setState(() {
-      _timerRunning = running;
-    });
-  }
+  // Timer running handler removed (unused) - keep field for potential use.
 
   @override
   Widget build(BuildContext context) {
@@ -109,12 +101,6 @@ class _MainPageState extends State<MainPage> {
         page = FriendsPage();
         break;
       case 2:
-        page = TimerPage(onTimerRunningChanged: _handleTimerRunningChanged);
-        break;
-      case 3:
-        page = ResultsPage();
-        break;
-      case 4:
         page = ProfilePage();
         break;
       default:

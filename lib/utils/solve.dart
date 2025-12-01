@@ -109,11 +109,9 @@ final Map<Event, String> eventNames = {
 };
 
 final Map<Event, double> eventScrambleFontSizes = {
-  Event.sixBySix: 17,
-  Event.sevenBySeven: 15,
-  Event.megaminx: 16,
-  Event.skewb: 18,
-  Event.clock: 18,
+  Event.sixBySix: 16,
+  Event.sevenBySeven: 14,
+  Event.megaminx: 15,
 };
 
 final Map<Event, String> eventIDs = {
